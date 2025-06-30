@@ -321,7 +321,7 @@ export const useQuotes = () => {
     setError(null);
     try {
       const report = await apiService.getQuotesReport();
-      return report.statistics;
+      return report?.statistics;
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao gerar relatório');
       throw err;

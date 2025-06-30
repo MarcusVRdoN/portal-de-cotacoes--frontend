@@ -97,7 +97,7 @@ const LoginForm = ({ onLogin }: LoginFormProps) => {
                 <p className="mb-2 font-medium">Contas de teste:</p>
                 <div className="space-y-1 text-xs">
                   <p><strong>Admin:</strong> admin@portal.com</p>
-                  <p><strong>Cliente:</strong> joao.cliente@email.com</p>
+                  <p><strong>Cliente:</strong> marcus.nascimento@rede.ulbra.br</p>
                   <p><strong>Fornecedor:</strong> maria.fornecedora@email.com</p>
                   <p><strong>Senha:</strong> 123456</p>
                 </div>
