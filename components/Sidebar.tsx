@@ -1,6 +1,6 @@
 import React from 'react'
 import { BarChart3, FileText, ShoppingCart, Package, Users } from 'lucide-react'
-import { MenuItem } from '../types'
+import { MenuItem } from '../@types'
 
 interface SidebarProps {
   activeTab: string

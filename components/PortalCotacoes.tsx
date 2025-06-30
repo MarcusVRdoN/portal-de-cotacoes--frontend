@@ -9,13 +9,15 @@ import Header from './Header'
 import UsersManager from './UsersManager'
 import OrdersManager from './OrdersManager'
 import ProductsManager from './ProductsManager'
-import { User } from '@/types'
+import { User } from '@/@types'
+import { useAuth } from '@/hooks/useApi'
 
 const AppContext = createContext<any>(null)
 
 const PortalCotacoes = () => {
   const [user, setUser] = useState<User | null>(null)
   const [activeTab, setActiveTab] = useState('dashboard')
+  const { signOut } = useAuth()
 
   const handleLogin = (userData: User) => {
     setUser(userData)
@@ -23,6 +25,7 @@ const PortalCotacoes = () => {
   }
 
   const handleLogout = () => {
+    signOut()
     setUser(null)
     setActiveTab('dashboard')
   }
@@ -30,17 +33,17 @@ const PortalCotacoes = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard user={user as User} />
+        return <Dashboard user={user} />
       case 'quotes':
-        return <QuotesManager user={user as User} />
+        return <QuotesManager user={user} />
       case 'orders':
-        return <OrdersManager user={user as User} />
+        return <OrdersManager user={user} />
       case 'products':
         return <ProductsManager />
       case 'users':
         return <UsersManager />
       default:
-        return <Dashboard user={user as User} />
+        return <Dashboard user={user} />
     }
   }
 

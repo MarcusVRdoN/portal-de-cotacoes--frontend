@@ -1,33 +1,31 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Package, AlertCircle, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
-import { useApiCall } from '../hooks/useApiCall'
-import { apiService } from '../services/apiService'
-import { User } from '../types'
+import type { LoginFormProps, User } from '@/@types'
+import { useAuth } from '@/hooks/useApi'
+// import { useRouter } from 'next/navigation'
 
-interface LoginFormProps {
-  onLogin: (user: User) => void
-}
-
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
+const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const { loading, error, callApi } = useApiCall()
+  const { signIn, loading, error, user } = useAuth()
+  // const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    
     try {
-      await callApi(async () => {
-        const response = await apiService.login(email, password)
-        onLogin(response.user)
-      })
+      await signIn(email, password);
+      // router.push('/dashboard');
     } catch (err) {
-      // Error já é tratado pelo hook useApiCall
+      console.error('Erro no login:', err);
     }
-  }
+  };
+
+  useMemo(() => onLogin(user as unknown as User), [onLogin, user])
 
   return (
     <div className="flex items-center justify-center min-h-screen px-4 py-12 bg-gradient-to-br from-blue-50 to-indigo-100">

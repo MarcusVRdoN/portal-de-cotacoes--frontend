@@ -1,14 +1,12 @@
-import { ApiResponse } from "@/types"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000/api'
+import { ApiResponse } from "@/@types"
 
 class ApiService {
   private baseURL: string
   private token: string | null = null
 
   constructor() {
-    this.baseURL = API_BASE_URL
-    // Recuperar token do localStorage se existir
+    this.baseURL = String(process.env.NEXT_PUBLIC_API_BASE_URL)
+
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token')
     }
@@ -24,6 +22,7 @@ class ApiService {
 
   removeToken() {
     this.token = null
+
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth_token')
     }

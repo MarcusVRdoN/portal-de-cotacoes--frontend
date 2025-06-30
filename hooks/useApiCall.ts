@@ -8,11 +8,15 @@ export const useApiCall = () => {
     try {
       setLoading(true)
       setError(null)
+
       const result = await apiFunction()
+
       return result
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
+
       setError(errorMessage)
+      
       throw err
     } finally {
       setLoading(false)

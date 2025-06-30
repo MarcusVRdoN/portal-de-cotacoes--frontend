@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { Edit, Plus, Trash2 } from "lucide-react";
+import { Edit, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Avatar, AvatarFallback } from "./ui/avatar";
@@ -28,48 +28,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { apiService } from "../services/apiService";
-import { User } from "../types";
+import { useAuth, useUsers } from "@/hooks/useApi";
+import { LoadingSpinner, ErrorMessage } from './LoadingAndError'
+import { UserType } from "@/@types";
 
 const UsersManager = () => {
-  const [users, setUsers] = useState<User[]>([]);
   const [isNewUserOpen, setIsNewUserOpen] = useState(false);
-  const [newUser, setNewUser] = useState({
-    nome: "",
-    email: "",
-    senha: "",
-    tipo_usuario: "CLIENT",
-  });
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ name: "", email: "", password: "", userType: UserType.CLIENT });
+  const [editingUser, setEditingUser] = useState({ id_usuario: 0, name: "", email: "", newPassword: "", userType: UserType.CLIENT });
+  const { users, loading, error, fetchUsers, deleteUser, updateUser } = useUsers()
+  const { loading: loadingAuth, signUp } = useAuth()
 
-  // Load admin token from storage (adjust as needed)
-  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-
-  // Fetch all users on mount
   useEffect(() => {
-    console.log(token)
-    if (!token) return;
-    apiService
-      .listUsers(token)
-      .then((res) => setUsers(res.usuarios))
-      .catch((err) => console.error("Failed to load users", err));
-  }, [token]);
+    fetchUsers();
+  }, []);
 
   const handleCreateUser = async () => {
-    if (!token) return;
-    try {
-      const { user } = await apiService.signup({
-        nome: newUser.nome,
-        email: newUser.email,
-        senha: newUser.senha,
-        tipo_usuario: newUser.tipo_usuario as "ADMIN" | "CLIENT" | "SUPPLIER",
-      });
-      setUsers((prev) => [...prev, user]);
-      setNewUser({ nome: "", email: "", senha: "", tipo_usuario: "CLIENT" });
-      setIsNewUserOpen(false);
-    } catch (error) {
-      console.error("Error creating user", error);
-      // optionally show toast
-    }
+    await signUp(newUser)
+    fetchUsers();
+    setIsNewUserOpen(false)
+    setNewUser({ name: "", email: "", password: "", userType: UserType.CLIENT })
+  };
+
+  const handleEditUser = (user: { id_usuario: number; nome: string, email: string, newPassword: string, tipo_usuario: UserType }) => {
+    setEditingUser({
+      id_usuario: user.id_usuario,
+      name: user.nome,
+      email: user.email,
+      newPassword: user.newPassword,
+      userType: user.tipo_usuario
+    });
+    setIsEditUserOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    await updateUser(editingUser.id_usuario, {
+      name: editingUser.name,
+      email: editingUser.email,
+      newPassword: editingUser.newPassword,
+      userType: editingUser.userType
+    });
+    fetchUsers();
+    setIsEditUserOpen(false);
+    setEditingUser({ id_usuario: 0, name: "", email: "", newPassword: "", userType: UserType.CLIENT });
   };
 
   const getUserTypeBadge = (type: string) => {
@@ -79,8 +81,12 @@ const UsersManager = () => {
       SUPPLIER: { variant: "secondary", label: "Fornecedor" },
     };
     const config = variants[type] || { variant: "default", label: type };
+
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
+
+  if (loading && users.length === 0) return <LoadingSpinner />
+  if (error) return <ErrorMessage message={error} onRetry={() => fetchUsers()} />
 
   return (
     <div className="space-y-6">
@@ -89,6 +95,7 @@ const UsersManager = () => {
           <h3 className="text-2xl font-bold text-gray-900">Usuários</h3>
           <p className="text-gray-600">Gerencie usuários do sistema</p>
         </div>
+        {/* Dialog de criação de novo usuário */}
         <Dialog open={isNewUserOpen} onOpenChange={setIsNewUserOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -103,39 +110,39 @@ const UsersManager = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="nome">Nome</Label>
+                <Label htmlFor="new-name">Nome</Label>
                 <Input
-                  id="nome"
-                  value={newUser.nome}
-                  onChange={(e) => setNewUser({ ...newUser, nome: e.target.value })}
+                  id="new-name"
+                  value={newUser.name}
+                  onChange={(event) => setNewUser({ ...newUser, name: event.target.value })}
                   placeholder="Nome completo"
                 />
               </div>
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="new-email">Email</Label>
                 <Input
-                  id="email"
+                  id="new-email"
                   type="email"
                   value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  onChange={(event) => setNewUser({ ...newUser, email: event.target.value })}
                   placeholder="email@exemplo.com"
                 />
               </div>
               <div>
-                <Label htmlFor="senha">Senha</Label>
+                <Label htmlFor="new-password">Senha</Label>
                 <Input
-                  id="senha"
+                  id="new-password"
                   type="password"
-                  value={newUser.senha}
-                  onChange={(e) => setNewUser({ ...newUser, senha: e.target.value })}
+                  value={newUser.password}
+                  onChange={(event) => setNewUser({ ...newUser, password: event.target.value })}
                   placeholder="Senha"
                 />
               </div>
               <div>
-                <Label htmlFor="tipo_usuario">Tipo de Usuário</Label>
+                <Label htmlFor="new-userType">Tipo de Usuário</Label>
                 <Select
-                  value={newUser.tipo_usuario}
-                  onValueChange={(value) => setNewUser({ ...newUser, tipo_usuario: value })}
+                  value={newUser.userType}
+                  onValueChange={(value) => setNewUser({ ...newUser, userType: value as UserType })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo" />
@@ -152,7 +159,88 @@ const UsersManager = () => {
               <Button variant="outline" onClick={() => setIsNewUserOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleCreateUser}>Criar Usuário</Button>
+              <Button onClick={handleCreateUser} disabled={loadingAuth}>
+                {loadingAuth ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Criando...
+                  </>
+                ) : (
+                  'Criar Usuário'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Dialog de edição de usuário */}
+        <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Usuário</DialogTitle>
+              <DialogDescription>Edite as informações do usuário no sistema</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-name">Nome</Label>
+                <Input
+                  id="edit-name"
+                  value={editingUser.name}
+                  onChange={(event) => setEditingUser({ ...editingUser, name: event.target.value })}
+                  placeholder="Nome completo"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editingUser.email}
+                  onChange={(event) => setEditingUser({ ...editingUser, email: event.target.value })}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-password">Senha</Label>
+                <Input
+                  id="edit-password"
+                  type="password"
+                  value={editingUser.newPassword}
+                  onChange={(event) => setEditingUser({ ...editingUser, newPassword: event.target.value })}
+                  placeholder="Senha"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-userType">Tipo de Usuário</Label>
+                <Select
+                  value={editingUser.userType}
+                  onValueChange={(value) => setEditingUser({ ...editingUser, userType: value as UserType })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CLIENT">Cliente</SelectItem>
+                    <SelectItem value="SUPPLIER">Fornecedor</SelectItem>
+                    <SelectItem value="ADMIN">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdateUser} disabled={loadingAuth}>
+                {loadingAuth ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar Alterações'
+                )}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -183,10 +271,20 @@ const UsersManager = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   {getUserTypeBadge(user.tipo_usuario)}
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={loading}
+                    onClick={() => handleEditUser(user as any)}
+                  >
                     <Edit className="w-4 h-4" />
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={loading}
+                    onClick={() => deleteUser(user.id_usuario)}
+                  >
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>

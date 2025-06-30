@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from './ui/dropdown-menu'
-import { User } from '../types'
+import { User } from '../@types'
 
 interface HeaderProps {
   user: User

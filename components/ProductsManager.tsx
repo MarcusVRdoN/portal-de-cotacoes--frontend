@@ -1,10 +1,7 @@
-import { useApiCall } from "@/hooks/useApiCall"
-import { apiService } from "@/services/apiService"
-import { Product } from "@/types"
 import { useEffect, useState } from "react"
 import { LoadingSpinner } from "./LoadingAndError"
 import { ErrorMessage } from "./ui/errors"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "./ui/dialog"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog"
 import { Button } from "./ui/button"
 import { Edit, Plus, RefreshCw, Trash2 } from "lucide-react"
 import { Label } from "./ui/label"
@@ -12,56 +9,49 @@ import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "./ui/card"
 import { Badge } from "./ui/badge"
+import { useProducts } from "@/hooks/useApi"
 
 const ProductsManager = () => {
-  const [products, setProducts] = useState<Product[]>([])
   const [isNewProductOpen, setIsNewProductOpen] = useState(false)
-  const [newProduct, setNewProduct] = useState({
-    nome_produto: '',
-    descricao: '',
-    estoque: '',
-    preco: ''
-  })
-  const { loading, error, callApi } = useApiCall()
+  const [isEditProductOpen, setIsEditProductOpen] = useState(false)
+  const [newProduct, setNewProduct] = useState({ productName: '', description: '', quantity: 0, })
+  const [editingProduct, setEditingProduct] = useState({ id: 0, productName: '', description: '', quantity: 0, })
+  const { products, loading, error, fetchProducts, createProduct, updateProduct, deleteProduct } = useProducts()
 
   useEffect(() => {
-    loadProducts()
+    fetchProducts()
   }, [])
 
-  const loadProducts = async () => {
-    try {
-      await callApi(async () => {
-        const token = String(localStorage.getItem('auth_token'))
-        const response = await apiService.getProducts(token)
-        setProducts(response.produtos)
-      })
-    } catch (err) {
-      // Error handled by useApiCall
-    }
+  const handleCreateProduct = async () => {
+    await createProduct(newProduct)
+    fetchProducts()
+    setIsNewProductOpen(false)
+    setNewProduct({ productName: '', description: '', quantity: 0, })
   }
 
-  const handleCreateProduct = async () => {
-    try {
-      await callApi(async () => {
-        const productData = {
-          nome_produto: newProduct.nome_produto,
-          descricao: newProduct.descricao,
-          estoque: Number(newProduct.estoque),
-          preco: Number(newProduct.preco)
-        }
-        const token = String(localStorage.getItem('auth_token'))
-        const response = await apiService.createProduct(productData, token)
-        setProducts([...products, response])
-        setNewProduct({ nome_produto: '', descricao: '', estoque: '', preco: '' })
-        setIsNewProductOpen(false)
-      })
-    } catch (err) {
-      // Error handled by useApiCall
-    }
+  const handleEditProduct = async (product: { id_produto: number; nome_produto: string; descricao: string; estoque: number; }) => {
+    setEditingProduct({
+      id: product.id_produto,
+      productName: product.nome_produto,
+      description: product.descricao,
+      quantity: product.estoque
+    })
+    setIsEditProductOpen(true)
+  }
+
+  const handleUpdateProduct = async () => {
+    await updateProduct(editingProduct.id, {
+      productName: editingProduct.productName,
+      description: editingProduct.description,
+      quantity: Number(editingProduct.quantity),
+    })
+    fetchProducts()
+    setIsEditProductOpen(false)
+    setEditingProduct({ id: 0, productName: '', description: '', quantity: 0, })
   }
 
   if (loading && products.length === 0) return <LoadingSpinner />
-  if (error) return <ErrorMessage message={error} onRetry={loadProducts} />
+  if (error) return <ErrorMessage message={error} onRetry={() => fetchProducts()} />
 
   return (
     <div className="space-y-6">
@@ -70,6 +60,7 @@ const ProductsManager = () => {
           <h3 className="text-2xl font-bold text-gray-900">Produtos</h3>
           <p className="text-gray-600">Gerencie o catálogo de produtos</p>
         </div>
+        {/* Dialog de criação de produto */}
         <Dialog open={isNewProductOpen} onOpenChange={setIsNewProductOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -89,8 +80,8 @@ const ProductsManager = () => {
                 <Label htmlFor="nome_produto">Nome do Produto</Label>
                 <Input
                   id="nome_produto"
-                  value={newProduct.nome_produto}
-                  onChange={(e) => setNewProduct({ ...newProduct, nome_produto: e.target.value })}
+                  value={newProduct.productName}
+                  onChange={(e) => setNewProduct({ ...newProduct, productName: e.target.value })}
                   placeholder="Nome do produto"
                 />
               </div>
@@ -98,8 +89,8 @@ const ProductsManager = () => {
                 <Label htmlFor="descricao">Descrição</Label>
                 <Textarea
                   id="descricao"
-                  value={newProduct.descricao}
-                  onChange={(e) => setNewProduct({ ...newProduct, descricao: e.target.value })}
+                  value={newProduct.description}
+                  onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
                   placeholder="Descrição detalhada do produto"
                 />
               </div>
@@ -109,20 +100,9 @@ const ProductsManager = () => {
                   <Input
                     id="estoque"
                     type="number"
-                    value={newProduct.estoque}
-                    onChange={(e) => setNewProduct({ ...newProduct, estoque: e.target.value })}
+                    value={newProduct.quantity}
+                    onChange={(e) => setNewProduct({ ...newProduct, quantity: Number(e.target.value) })}
                     placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="preco">Preço Unitário (R$)</Label>
-                  <Input
-                    id="preco"
-                    type="number"
-                    step="0.01"
-                    value={newProduct.preco}
-                    onChange={(e) => setNewProduct({ ...newProduct, preco: e.target.value })}
-                    placeholder="0.00"
                   />
                 </div>
               </div>
@@ -139,6 +119,65 @@ const ProductsManager = () => {
                   </>
                 ) : (
                   'Criar Produto'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de edição de produto */}
+        <Dialog open={isEditProductOpen} onOpenChange={setIsEditProductOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Produto</DialogTitle>
+              <DialogDescription>
+                Edite os detalhes do produto
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="nome_produto">Nome do Produto</Label>
+                <Input
+                  id="nome_produto"
+                  value={editingProduct.productName}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, productName: e.target.value })}
+                  placeholder="Nome do produto"
+                />
+              </div>
+              <div>
+                <Label htmlFor="descricao">Descrição</Label>
+                <Textarea
+                  id="descricao"
+                  value={editingProduct.description}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                  placeholder="Descrição detalhada do produto"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="estoque">Quantidade em Estoque</Label>
+                  <Input
+                    id="estoque"
+                    type="number"
+                    value={editingProduct.quantity}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, quantity: Number(e.target.value) })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditProductOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdateProduct} disabled={loading}>
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Atualizando...
+                  </>
+                ) : (
+                  'Atualizar Produto'
                 )}
               </Button>
             </DialogFooter>
@@ -166,18 +205,14 @@ const ProductsManager = () => {
                       {product.estoque} unidades
                     </Badge>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Preço:</span>
-                    <span className="text-lg font-bold">R$ {product.preco.toFixed(2)}</span>
-                  </div>
                 </CardContent>
                 <CardFooter className="pt-2">
                   <div className="flex w-full space-x-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button variant="outline" size="sm" className="flex-1" disabled={loading} onClick={() => handleEditProduct(product)}>
                       <Edit className="w-4 h-4 mr-2" />
                       Editar
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" disabled={loading} onClick={() => deleteProduct(product.id_produto)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>

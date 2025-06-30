@@ -1,8 +1,10 @@
+import { UserType } from "./api"
+
 export interface User {
   id_usuario: number
   nome: string
   email: string
-  tipo_usuario: 'ADMIN' | 'CLIENT' | 'SUPPLIER'
+  tipo_usuario: UserType
 }
 
 export interface Product {
@@ -48,7 +50,7 @@ export interface MenuItem {
 
 export interface Stat {
   title: string
-  value: string
+  value: string | number
   change: string
   color: string
   bgColor: string
@@ -59,3 +61,6 @@ export interface ApiResponse<T> {
   message?: string
   error?: string
 }
+
+export * from "./api"
+export * from "./components"

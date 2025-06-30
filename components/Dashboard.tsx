@@ -1,18 +1,35 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { BarChart3, FileText, Check, Clock } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
-import { User, Stat } from '../types'
+import { useQuotes, useStock } from '@/hooks/useApi'
+import type { Stat, User } from '@/@types'
 
-interface DashboardProps {
-  user: User
-}
+const Dashboard = ({ user }: { user: User | null }) => {
+  const [quotesStatistics, setQuotesStatistics] = useState({ pendingCount: 0, confirmedCount: 0 })
+  const [stockStatistics, setStockStatistics] = useState({ totalProducts: 0, productsWithLowStock: 0 })
+  const { getQuotesReport, loading, error } = useQuotes()
+  const { getStockReport, loading: stockLoading, error: stockError } = useStock()
 
-const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+  useEffect(() => {
+    const fetchQuotesReport = async () => {
+      const report = await getQuotesReport()
+      setQuotesStatistics(report)
+    };
+
+    const fetchStockReport = async () => {
+      const report = await getStockReport()
+      setStockStatistics(report)
+    };
+
+    fetchQuotesReport()
+    fetchStockReport()
+  }, [])
+
   const stats: Stat[] = [
-    { title: 'Cotações Pendentes', value: '5', change: '+2', color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
-    { title: 'Pedidos Confirmados', value: '12', change: '+3', color: 'text-green-600', bgColor: 'bg-green-50' },
-    { title: 'Produtos Cadastrados', value: '150', change: '+10', color: 'text-blue-600', bgColor: 'bg-blue-50' },
-    { title: 'Estoque Baixo', value: '8', change: '-2', color: 'text-red-600', bgColor: 'bg-red-50' }
+    { title: 'Cotações Pendentes', value: quotesStatistics?.pendingCount || 0, change: '+2', color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+    { title: 'Pedidos Confirmados', value: quotesStatistics?.confirmedCount || 0, change: '+3', color: 'text-green-600', bgColor: 'bg-green-50' },
+    { title: 'Produtos Cadastrados', value: stockStatistics?.totalProducts || 0, change: '+10', color: 'text-blue-600', bgColor: 'bg-blue-50' },
+    { title: 'Estoque Baixo', value: stockStatistics?.productsWithLowStock || 0, change: '-2', color: 'text-red-600', bgColor: 'bg-red-50' }
   ]
 
   return (
@@ -96,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               <div className="w-full h-2 bg-gray-200 rounded-full">
                 <div className="h-2 bg-green-600 rounded-full" style={{ width: '85%' }}></div>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm">Tempo médio resposta</span>
                 <span className="font-bold text-blue-600">2.4h</span>
@@ -104,7 +121,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               <div className="w-full h-2 bg-gray-200 rounded-full">
                 <div className="h-2 bg-blue-600 rounded-full" style={{ width: '70%' }}></div>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-sm">Satisfação cliente</span>
                 <span className="font-bold text-purple-600">94%</span>
